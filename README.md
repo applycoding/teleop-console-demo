@@ -6,6 +6,13 @@ A browser mission console driving a simulated differential-drive robot, with vis
 
 ![Teleop console screenshot](docs/screenshot.png)
 
+| Input | Action |
+| --- | --- |
+| Hold Shift | Deadman (required to move) |
+| WASD or arrow keys | Drive while deadman held |
+| Space | Emergency stop |
+| Gamepad button 0 + left stick | Drive while deadman held |
+
 ## Honesty: this is a simulation demo
 
 This is a simulation demo built to show engineering patterns, not a production teleop stack. The robot is a 2D kinematic model in a Python process. There is no real-time OS, certified safety system, camera, or physical actuator in the loop. Latency, jitter, and packet loss are synthetic and applied in software. E-stop, deadman, and watchdog illustrate patterns and are not substitutes for certified safety systems on real hardware. Collision checks happen after each integration step; they are not continuous collision detection. The application has no authentication and is intended for local demonstration on a trusted machine.
@@ -38,7 +45,7 @@ docker compose up --build
 ## Controls and features
 
 - The first WebSocket connection gets the operator lock. Other tabs observe telemetry and cannot drive. When the operator disconnects, the oldest remaining connection is promoted.
-- Hold Shift and use WASD or arrow keys. With a connected gamepad, hold button 0 and use the left stick. Release the deadman, leave the tab, or lose the link to stop motion. Browser Gamepad API availability depends on browser support and a secure context; localhost is suitable.
+- Release the deadman, leave the tab, or lose the link to stop motion. Browser Gamepad API availability depends on browser support and a secure context; localhost is suitable.
 - Emergency stop immediately zeros velocity and latches until Reset. Reset also respawns the robot and restores the battery.
 - A watchdog runs in the physics step and stops motion after 300 ms without an accepted command. Commands older than 300 ms in the delay queue are discarded.
 - Per-client commands are limited to 30 Hz. The UI sends at 20 Hz. Diagnostics show rate-limit and synthetic-loss drops.
@@ -71,41 +78,19 @@ The command path is operator validation, async network queue, freshness check, r
 
 ## API
 
-REST requests and responses use JSON unless noted. POST bodies may be empty objects except network settings.
+REST uses JSON. WebSocket endpoint: `/ws`. Envelope: `{"topic": str, "stamp": float, "data": object}`.
 
-| Method | Endpoint | Behavior |
+| Method | Endpoint | Notes |
 | --- | --- | --- |
-| GET | `/api/health` | Status and simulation flag |
-| GET | `/api/state` | Pose, battery, e-stop, clients, replay, world geometry |
-| POST | `/api/estop` | Latch e-stop and stop immediately |
-| POST | `/api/reset` | Clear latch, respawn, reset battery and deadman |
-| POST | `/api/network` | Set `latency_ms`, `jitter_ms`, `loss_pct`; omitted values default to zero |
-| GET | `/api/recordings` | List session IDs, start times, byte sizes, message counts |
-| GET | `/api/recordings/{id}` | Download JSONL |
-| POST | `/api/recordings/start` | Start new session and return ID |
-| POST | `/api/recordings/stop` | Flush and close recording |
-| POST | `/api/replay/{id}` | Start paced telemetry replay |
-| POST | `/api/replay/stop` | Stop replay |
+| GET | `/api/health` | Liveness and `simulation: true` |
+| GET | `/api/state` | Pose, battery, e-stop, clients, replay, world, `network` |
+| POST | `/api/estop` | Latch e-stop |
+| POST | `/api/reset` | Clear latch, respawn robot |
+| POST | `/api/network` | Body: `latency_ms`, `jitter_ms`, `loss_pct` (each defaults to 0) |
+| GET/POST | `/api/recordings` | List, start, stop; GET `/{id}` downloads JSONL |
+| POST | `/api/replay/{id}` | Paced telemetry replay; POST `/api/replay/stop` ends it |
 
-Connect to `/ws`. Every message uses `{"topic": str, "stamp": float, "data": object}`. The server supplies Unix timestamps for recorded commands and telemetry. Client timestamps are optional on incoming messages. Unsupported or invalid commands receive a diagnostic reason.
-
-```json
-{"topic":"/cmd_vel","stamp":1732000000.123,"data":{"linear":0.5,"angular":-0.2,"deadman":true}}
-```
-
-Linear velocity is clamped to +/-1 m/s and angular velocity to +/-2 rad/s. Send commands continuously while holding the deadman.
-
-| Topic | Data |
-| --- | --- |
-| `/cmd_vel` | Inbound `linear`, `angular`, `deadman` |
-| `/odom` | `x`, `y`, `theta`, `v`, `w` in meters, radians, seconds |
-| `/scan` | `angle_min`, `angle_max`, `ranges` in meters; 180 samples, exclusive upper angular endpoint, relative to robot heading |
-| `/battery_state` | `percentage` from 0 to 100, `voltage` |
-| `/diagnostics` | `estop`, `deadman`, `watchdog_tripped`, `link`, `cmd_rate_hz`, `dropped_cmds`, `rtt_ms`, `role`, `replay`; event messages contain `reason` and `role` |
-| `/ping` | Inbound `id`, `t` |
-| `/pong` | Echoed `id`, `t`, `applied_delay_ms` |
-
-Diagnostics `rtt_ms` reports server-observed ping queue delay; the UI measures full browser round trip. Link is online while the socket is connected. Recordings contain every valid operator command before netem and every generated outbound telemetry envelope, including per-client diagnostics. Ping/pong and connection event diagnostics are not telemetry recordings. Synthetic drop and rate-limit counts are combined; stale and interlocked commands are rejected separately and are not counted in that metric.
+**WebSocket topics:** `/cmd_vel` (in, `linear`, `angular`, `deadman`, clamped to +/-1 m/s and +/-2 rad/s), `/odom`, `/scan` (180 ranges), `/battery_state`, `/diagnostics`, `/ping` and `/pong`. Invalid commands get a diagnostic `reason`. Recordings store operator commands and outbound telemetry (not ping or connect events). UI RTT is browser ping/pong elapsed time; diagnostics `rtt_ms` is server queue delay only.
 
 ## How this maps to real robots
 
@@ -120,7 +105,7 @@ pytest -q
 make test
 ```
 
-Tests cover kinematics, collision, lidar, battery, fixed steps, safety, delay queues, recording, replay, operator ownership, validation, health, and live WebSocket movement. `create_app(start_loops=False)` supports deterministic stepping. GitHub Actions runs pytest on Python 3.11 for pushes and pull requests. No external service or frontend build is required. The UI uses system fonts and works fully offline.
+Tests cover kinematics, collision, lidar, battery, fixed steps, safety, delay queues, recording, replay (including WebSocket `/odom` during replay), operator ownership, validation, health, and live WebSocket movement. `create_app(start_loops=False)` supports deterministic stepping. GitHub Actions runs pytest on Python 3.11 for pushes and pull requests. No external service or frontend build is required. The UI uses system fonts and works fully offline.
 
 ## License
 

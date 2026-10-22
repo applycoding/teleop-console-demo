@@ -76,7 +76,7 @@ class Console:
         r = self.robot
         return {'pose': {'x': r.x, 'y': r.y, 'theta': r.theta}, 'battery': r.battery,
                 'estop': self.estop.is_active, 'connected_clients': len(self.clients),
-                'replay': self.replaying, 'world': asdict(self.world)}
+                'replay': self.replaying, 'world': asdict(self.world), 'network': asdict(self.network)}
 
     async def telemetry(self):
         while True:

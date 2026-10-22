@@ -90,6 +90,7 @@ def test_ping_network_and_validation(running):
     client, _ = running
     assert client.post('/api/network', json={'loss_pct': 101}).status_code == 422
     client.post('/api/network', json={'latency_ms': 50})
+    assert client.get('/api/state').json()['network']['latency_ms'] == 50
     with client.websocket_connect('/ws') as ws:
         started = time.monotonic()
         ws.send_json({'topic': '/ping', 'data': {'id': 'test', 't': 123}})
@@ -109,6 +110,21 @@ def test_stale_packets_cannot_move_robot(running):
         time.sleep(.42)
         assert console.robot.x == 1.5
         assert console.robot.v == 0
+
+
+def test_replay_streams_odom_over_ws(running):
+    client, _ = running
+    session = client.post('/api/recordings/start').json()['id']
+    with client.websocket_connect('/ws') as ws:
+        command(ws)
+        receive_topic(ws, '/odom', lambda d: d['x'] > 1.51)
+        client.post('/api/recordings/stop')
+    assert client.post('/api/replay/' + session).json()['status'] == 'replay'
+    with client.websocket_connect('/ws') as ws:
+        receive_topic(ws, '/diagnostics', lambda d: d.get('replay') is True)
+        odom = receive_topic(ws, '/odom')
+        assert 'x' in odom and 'y' in odom
+    assert client.post('/api/replay/stop').json()['status'] == 'stopped'
 
 
 def test_record_and_replay_isolation(running):

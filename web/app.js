@@ -320,7 +320,18 @@ function render(now) {
 
 // ---------- Boot ----------
 
-api('state').then(d => { world = d.world; }).catch(report);
+function applyNetworkSettings(network) {
+  for (const name of ['latency_ms', 'jitter_ms', 'loss_pct']) {
+    if (network[name] === undefined) continue;
+    $(name).value = network[name];
+    $(name + '-value').value = network[name] + (name === 'loss_pct' ? ' %' : ' ms');
+  }
+}
+
+api('state').then(d => {
+  world = d.world;
+  if (d.network) applyNetworkSettings(d.network);
+}).catch(report);
 refreshRecordings().catch(report);
 connect();
 requestAnimationFrame(render);
