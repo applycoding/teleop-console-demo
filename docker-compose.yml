@@ -1,0 +1,10 @@
+services:
+  console:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./recordings:/app/recordings
+    environment:
+      PORT: "8000"
+    init: true

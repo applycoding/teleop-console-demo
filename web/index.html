@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teleop | Mission Console</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="/">
+      ◈ <span>TELEOP<span class="muted"> / CONSOLE</span></span>
+    </a>
+    <div class="header-right">
+      <span class="tag">SIMULATION ONLY</span>
+      <span id="role">CONNECTING</span>
+      <span class="live-dot"></span>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="topline">
+      <div>
+        <div class="eyebrow">HUMAN IN THE LOOP / ROBOT 01</div>
+        <h1>Mission control<span class="accent">.</span></h1>
+        <p>A live workspace for simulated differential-drive teleoperation.</p>
+      </div>
+      <div class="session">
+        <span class="muted">LOCAL SESSION</span>
+        <strong id="clock">00:00:00</strong>
+      </div>
+    </section>
+
+    <section class="safety-bar" aria-label="Safety status">
+      <div id="estop-status" class="status good">● E-STOP CLEAR</div>
+      <div id="deadman-status" class="status">○ DEADMAN RELEASED</div>
+      <div id="watchdog-status" class="status warn">● WATCHDOG STALE</div>
+      <div id="link-status" class="status bad">● LINK OFFLINE</div>
+    </section>
+
+    <div id="replay-banner" hidden>REPLAY / Recorded telemetry. Live commands are blocked.</div>
+
+    <div class="workspace">
+
+      <section class="map-panel panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">SPATIAL VIEW</span>
+            <h2>Arena / live telemetry</h2>
+          </div>
+          <label class="toggle"><input type="checkbox" id="lidar" checked> Lidar overlay</label>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="arena" aria-label="Top-down simulated arena"></canvas>
+          <div class="map-label">
+            WORLD 12 × 8 m
+            <span>50 Hz PHYSICS / 20 Hz TELEMETRY</span>
+          </div>
+          <div class="map-legend">
+            <span class="accent">● Robot 01</span>
+            <span>● Obstacle</span>
+            <span class="cyan">● Lidar return</span>
+          </div>
+        </div>
+        <div class="control-footer">
+          <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows to steer</span>
+          <span>Hold <kbd>SHIFT</kbd> to enable</span>
+          <span id="gamepad">Gamepad: waiting</span>
+        </div>
+      </section>
+
+      <aside>
+
+        <section class="panel command-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">SAFETY INTERLOCK</span>
+              <h2>Operator controls</h2>
+            </div>
+            <span class="tiny">01</span>
+          </div>
+          <button id="estop" class="estop">
+            ■ EMERGENCY STOP
+            <small>Latches until explicit reset</small>
+          </button>
+          <button id="reset" class="secondary">Reset latch + respawn robot ↻</button>
+          <p class="hint">Motion requires the operator lock and held deadman. Release Shift or gamepad button 0 to stop.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">COMMAND PATH</span>
+              <h2>Network emulation</h2>
+            </div>
+            <span class="tag">SYNTHETIC</span>
+          </div>
+          <div class="sliders">
+            <label>
+              Latency <output id="latency_ms-value">0 ms</output>
+              <input id="latency_ms" type="range" min="0" max="600" step="10" value="0">
+            </label>
+            <label>
+              Jitter <output id="jitter_ms-value">0 ms</output>
+              <input id="jitter_ms" type="range" min="0" max="200" step="5" value="0">
+            </label>
+            <label>
+              Packet loss <output id="loss_pct-value">0 %</output>
+              <input id="loss_pct" type="range" min="0" max="100" value="0">
+            </label>
+          </div>
+          <div class="network-stats">
+            <div>
+              <span>MEASURED RTT</span>
+              <strong id="rtt">--<small> ms</small></strong>
+            </div>
+            <div>
+              <span>DROPPED CMDS</span>
+              <strong id="dropped">0</strong>
+            </div>
+          </div>
+          <p class="hint">Commands older than 300 ms are discarded. Ping reflects applied network delay.</p>
+        </section>
+
+      </aside>
+    </div>
+
+    <section class="telemetry-grid">
+      <div class="panel metric">
+        <span>LINEAR VELOCITY</span>
+        <strong id="velocity">0.00<small> m/s</small></strong>
+        <div class="meter"><i id="speed-meter"></i></div>
+      </div>
+      <div class="panel metric">
+        <span>ANGULAR VELOCITY</span>
+        <strong id="angular">0.00<small> rad/s</small></strong>
+        <p>Heading <b id="heading">0.0°</b></p>
+      </div>
+      <div class="panel metric">
+        <span>ROBOT POSITION</span>
+        <strong id="position">1.50 / 4.00<small> m</small></strong>
+        <p>X / Y coordinates</p>
+      </div>
+      <div class="panel metric">
+        <span>BATTERY STATE</span>
+        <strong id="battery">100.0<small> %</small></strong>
+        <p><b id="voltage">12.60 V</b><span class="accent"> ● Nominal</span></p>
+      </div>
+    </section>
+
+    <section class="panel recording-panel">
+      <div>
+        <span class="eyebrow">SESSION ARCHIVE</span>
+        <h2>Record & replay</h2>
+      </div>
+      <span id="record-status" class="muted" role="status">Ready to record</span>
+      <div class="record-actions">
+        <button id="record">● Record</button>
+        <button id="stop-record" class="secondary">Stop</button>
+        <select id="recordings" aria-label="Saved recordings">
+          <option value="">Select a recording</option>
+        </select>
+        <button id="replay" class="secondary">▷ Replay</button>
+        <button id="stop-replay" class="secondary">Exit replay</button>
+      </div>
+    </section>
+
+    <footer>
+      <span>TELEOP CONSOLE / ENGINEERING DEMO</span>
+      <span>Software interlocks are illustrative. No physical hardware is connected.</span>
+    </footer>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
