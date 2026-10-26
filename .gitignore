@@ -8,10 +8,6 @@ recordings/*.jsonl
 .env
 .DS_Store
 *.egg-info/
-.codex.log
 .plan.log
 *_prompt.txt
-.agents/
 .aws/
-.codex/
-.claude_fix.log

@@ -216,7 +216,7 @@ flowchart LR
 - [ ] README includes honesty section, architecture diagram, and real-robot mapping section
 - [ ] MIT license present
 
-## 14. Implementation notes (reviewer additions)
+## 14. Implementation notes
 
 - Recording control: `POST /api/recordings/start` and `POST /api/recordings/stop` in addition to list/get. UI has Record / Stop / Replay buttons and a recordings dropdown.
 - Use an app factory `create_app(start_loops: bool = True)` so tests can run deterministic sim steps without wall-clock loops where needed; the integration test may still use real loops with short waits.
